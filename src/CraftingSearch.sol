@@ -25,13 +25,81 @@ contract CraftingSearch is AccessControl {
     // Track last search timestamp for each player
     mapping(address => uint256) public lastSearchTime;
 
-    // Events for transparency
+    // Resource IDs (matching ResourceNFT1155)
+    uint256 public constant WOOD = 1;
+    uint256 public constant IRON = 2;
+    uint256 public constant GOLD = 3;
+    uint256 public constant LEATHER = 4;
+    uint256 public constant STONE = 5;
+    uint256 public constant DIAMOND = 6;
+
+    // Item Types
+    uint256 public constant COSSACK_SABRE = 1;      // 3×Iron + 1×Wood + 1×Leather
+    uint256 public constant ELDER_STAFF = 2;        // 2×Wood + 1×Gold + 1×Diamond
+    uint256 public constant CHARAKTERNYK_ARMOR = 3; // 4×Leather + 2×Iron + 1×Gold
+    uint256 public constant BATTLE_BRACELET = 4;    // 4×Iron + 2×Gold + 2×Diamond
+
+    // Recipe structure
+    struct Recipe {
+        uint256[] resourceIds;
+        uint256[] amounts;
+        bool exists;
+    }
+
+    // Store recipes for each item type
+    mapping(uint256 => Recipe) public recipes;
+
     event SearchPerformed(address indexed player, uint256[] resourceIds, uint256[] amounts);
+    event ItemCrafted(address indexed player, uint256 itemType, uint256 tokenId);
 
     constructor(address admin, ResourceNFT1155 _resources, ItemNFT721 _items) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         resources = _resources;
         items = _items;
+        _initializeRecipes();
+    }
+
+    /// @dev Initialize all crafting recipes
+    function _initializeRecipes() private {
+        uint256[] memory sabreIds = new uint256[](3);
+        uint256[] memory sabreAmounts = new uint256[](3);
+        sabreIds[0] = IRON;
+        sabreIds[1] = WOOD;
+        sabreIds[2] = LEATHER;
+        sabreAmounts[0] = 3;
+        sabreAmounts[1] = 1;
+        sabreAmounts[2] = 1;
+        recipes[COSSACK_SABRE] = Recipe(sabreIds, sabreAmounts, true);
+
+        uint256[] memory staffIds = new uint256[](3);
+        uint256[] memory staffAmounts = new uint256[](3);
+        staffIds[0] = WOOD;
+        staffIds[1] = GOLD;
+        staffIds[2] = DIAMOND;
+        staffAmounts[0] = 2;
+        staffAmounts[1] = 1;
+        staffAmounts[2] = 1;
+        recipes[ELDER_STAFF] = Recipe(staffIds, staffAmounts, true);
+
+        uint256[] memory armorIds = new uint256[](3);
+        uint256[] memory armorAmounts = new uint256[](3);
+        armorIds[0] = LEATHER;
+        armorIds[1] = IRON;
+        armorIds[2] = GOLD;
+        armorAmounts[0] = 4;
+        armorAmounts[1] = 2;
+        armorAmounts[2] = 1;
+        recipes[CHARAKTERNYK_ARMOR] = Recipe(armorIds, armorAmounts, true);
+
+        uint256[] memory braceletIds = new uint256[](3);
+        uint256[] memory braceletAmounts = new uint256[](3);
+        braceletIds[0] = IRON;
+        braceletIds[1] = GOLD;
+        braceletIds[2] = DIAMOND;
+        braceletAmounts[0] = 4;
+        braceletAmounts[1] = 2;
+        braceletAmounts[2] = 2;
+        recipes[BATTLE_BRACELET] = Recipe(braceletIds, braceletAmounts, true);
     }
 
     /// @notice Search for resources. Can be called once every 60 seconds per player.
@@ -69,15 +137,31 @@ contract CraftingSearch is AccessControl {
             amounts[i] = 1;
         }
         
-        // Mint the resources to the player
         resources.mintBatch(msg.sender, resourceIds, amounts);
-        
-        // Emit event for tracking
+
         emit SearchPerformed(msg.sender, resourceIds, amounts);
     }
 
-    /// @notice TODO: implement crafting according to recipes (burnBatch + mintTo).
-    function craft(uint256 /*itemType*/) external pure {
-        revert("TODO: implement craft()");
+    /// @notice Craft an item by burning required resources
+    /// @param itemType The type of item to craft (1-4)
+    /// @dev Burns resources from caller's balance and mints an ERC721 item
+    function craft(uint256 itemType) external {
+        require(recipes[itemType].exists, "Invalid item type");
+        
+        Recipe storage recipe = recipes[itemType];
+        
+        for (uint256 i = 0; i < recipe.resourceIds.length; i++) {
+            uint256 balance = resources.balanceOf(msg.sender, recipe.resourceIds[i]);
+            require(
+                balance >= recipe.amounts[i],
+                "Insufficient resources for crafting"
+            );
+        }
+        
+        resources.burnBatch(msg.sender, recipe.resourceIds, recipe.amounts);
+        
+        uint256 tokenId = items.mintTo(msg.sender);
+        
+        emit ItemCrafted(msg.sender, itemType, tokenId);
     }
 }

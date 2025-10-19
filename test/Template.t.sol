@@ -79,11 +79,9 @@ contract TemplateTest is Test {
     function test_search_cooldown_prevents_immediate_search() public {
         address player = address(0xBEEF);
         
-        // First search succeeds
         vm.prank(player);
         cs.search();
         
-        // Immediate second search should fail
         vm.prank(player);
         vm.expectRevert("Cooldown active: wait 60 seconds between searches");
         cs.search();
@@ -93,18 +91,14 @@ contract TemplateTest is Test {
     function test_search_works_after_cooldown() public {
         address player = address(0xBEEF);
         
-        // First search
         vm.prank(player);
         cs.search();
         
-        // Fast forward 60 seconds
         vm.warp(block.timestamp + 60);
         
-        // Second search should succeed
         vm.prank(player);
         cs.search();
         
-        // Player should now have 6 resources total (3 from each search)
         uint256 totalResources = 0;
         for (uint256 id = 1; id <= 6; id++) {
             totalResources += res.balanceOf(player, id);
@@ -117,15 +111,12 @@ contract TemplateTest is Test {
         address player1 = address(0xBEEF);
         address player2 = address(0xCAFE);
         
-        // Player 1 searches
         vm.prank(player1);
         cs.search();
         
-        // Player 2 can still search (independent cooldown)
         vm.prank(player2);
         cs.search();
         
-        // Both should have 3 resources
         uint256 player1Total = 0;
         uint256 player2Total = 0;
         for (uint256 id = 1; id <= 6; id++) {
@@ -145,20 +136,15 @@ contract TemplateTest is Test {
             vm.prank(player);
             cs.search();
             
-            // Fast forward to bypass cooldown
             vm.warp(block.timestamp + 60);
         }
         
-        // Check that player only has resources with IDs 1-6
         for (uint256 id = 1; id <= 6; id++) {
             uint256 balance = res.balanceOf(player, id);
-            // Balance should be >= 0 (valid resource)
             assertTrue(balance >= 0, "Resource balance should be valid");
         }
         
-        // Check that resource ID 0 doesn't exist
         assertEq(res.balanceOf(player, 0), 0, "Resource ID 0 should not exist");
-        // Check that resource ID 7 doesn't exist
         assertEq(res.balanceOf(player, 7), 0, "Resource ID 7 should not exist");
     }
 
@@ -166,14 +152,203 @@ contract TemplateTest is Test {
     function test_search_emits_event() public {
         address player = address(0xBEEF);
         
-        // Expect SearchPerformed event
         vm.prank(player);
         vm.recordLogs();
         cs.search();
         
-        // Verify event was emitted
         Vm.Log[] memory logs = vm.getRecordedLogs();
         assertTrue(logs.length > 0, "Event should be emitted");
+    }
+
+    // ========== CRAFT TESTS ==========
+
+    /// @notice Helper function to give player specific resources for testing
+    function _giveResources(address player, uint256[] memory ids, uint256[] memory amounts) internal {
+        vm.prank(address(cs)); 
+        res.mintBatch(player, ids, amounts);
+    }
+
+    /// @notice Test crafting Cossack Sabre 
+    function test_craft_cossack_sabre() public {
+        address player = address(0xBEEF);
+        
+        uint256[] memory ids = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
+        ids[0] = 2; 
+        ids[1] = 1; 
+        ids[2] = 4;
+        amounts[0] = 3;
+        amounts[1] = 1;
+        amounts[2] = 1;
+        _giveResources(player, ids, amounts);
+        
+        vm.prank(player);
+        cs.craft(1);
+        
+        assertEq(items.balanceOf(player), 1, "Player should have 1 item");
+        
+        assertEq(res.balanceOf(player, 2), 0, "Iron should be burned");
+        assertEq(res.balanceOf(player, 1), 0, "Wood should be burned");
+        assertEq(res.balanceOf(player, 4), 0, "Leather should be burned");
+    }
+
+    /// @notice Test crafting Elder Staff
+    function test_craft_elder_staff() public {
+        address player = address(0xBEEF);
+        
+        uint256[] memory ids = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
+        ids[0] = 1; 
+        ids[1] = 3; 
+        ids[2] = 6; 
+        amounts[0] = 2;
+        amounts[1] = 1;
+        amounts[2] = 1;
+        _giveResources(player, ids, amounts);
+        
+        vm.prank(player);
+        cs.craft(2); 
+        
+        assertEq(items.balanceOf(player), 1, "Player should have 1 item");
+        assertEq(res.balanceOf(player, 1), 0, "Wood should be burned");
+        assertEq(res.balanceOf(player, 3), 0, "Gold should be burned");
+        assertEq(res.balanceOf(player, 6), 0, "Diamond should be burned");
+    }
+
+    /// @notice Test crafting Charakternyk Armor 
+    function test_craft_charakternyk_armor() public {
+        address player = address(0xBEEF);
+        
+        uint256[] memory ids = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
+        ids[0] = 4; 
+        ids[1] = 2; 
+        ids[2] = 3; 
+        amounts[0] = 4;
+        amounts[1] = 2;
+        amounts[2] = 1;
+        _giveResources(player, ids, amounts);
+        
+        vm.prank(player);
+        cs.craft(3); 
+        
+        assertEq(items.balanceOf(player), 1, "Player should have 1 item");
+    }
+
+    /// @notice Test crafting Battle Bracelet
+    function test_craft_battle_bracelet() public {
+        address player = address(0xBEEF);
+        
+        uint256[] memory ids = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
+        ids[0] = 2; 
+        ids[1] = 3; 
+        ids[2] = 6; 
+        amounts[0] = 4;
+        amounts[1] = 2;
+        amounts[2] = 2;
+        _giveResources(player, ids, amounts);
+        
+        vm.prank(player);
+        cs.craft(4);
+        
+        assertEq(items.balanceOf(player), 1, "Player should have 1 item");
+    }
+
+    /// @notice Test that crafting fails with insufficient resources
+    function test_craft_fails_with_insufficient_resources() public {
+        address player = address(0xBEEF);
+        
+        uint256[] memory ids = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
+        ids[0] = 2; // Iron
+        ids[1] = 1; // Wood
+        ids[2] = 4; // Leather
+        amounts[0] = 2; // Only 2 instead of 3
+        amounts[1] = 1;
+        amounts[2] = 1;
+        _giveResources(player, ids, amounts);
+        
+        vm.prank(player);
+        vm.expectRevert("Insufficient resources for crafting");
+        cs.craft(1);
+    }
+
+    /// @notice Test that crafting fails with invalid item type
+    function test_craft_fails_with_invalid_item_type() public {
+        address player = address(0xBEEF);
+        
+        vm.prank(player);
+        vm.expectRevert("Invalid item type");
+        cs.craft(999);
+    }
+
+    /// @notice Test that player can craft multiple items
+    function test_craft_multiple_items() public {
+        address player = address(0xBEEF);
+        
+        uint256[] memory ids = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
+        ids[0] = 2; // Iron
+        ids[1] = 1; // Wood
+        ids[2] = 4; // Leather
+        amounts[0] = 6; // 3 × 2
+        amounts[1] = 2; // 1 × 2
+        amounts[2] = 2; // 1 × 2
+        _giveResources(player, ids, amounts);
+        
+        vm.prank(player);
+        cs.craft(1);
+        
+        vm.prank(player);
+        cs.craft(1);
+        
+        assertEq(items.balanceOf(player), 2, "Player should have 2 items");
+        assertEq(res.balanceOf(player, 2), 0, "All iron should be used");
+    }
+
+    /// @notice Test ItemCrafted event emission
+    function test_craft_emits_event() public {
+        address player = address(0xBEEF);
+        
+        uint256[] memory ids = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
+        ids[0] = 2; // Iron
+        ids[1] = 1; // Wood
+        ids[2] = 4; // Leather
+        amounts[0] = 3;
+        amounts[1] = 1;
+        amounts[2] = 1;
+        _giveResources(player, ids, amounts);
+        
+        vm.prank(player);
+        vm.recordLogs();
+        cs.craft(1);
+        
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertTrue(logs.length > 0, "ItemCrafted event should be emitted");
+    }
+
+    /// @notice Test that excess resources are kept after crafting
+    function test_craft_keeps_excess_resources() public {
+        address player = address(0xBEEF);
+        
+        uint256[] memory ids = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
+        ids[0] = 2; // Iron
+        ids[1] = 1; // Wood
+        ids[2] = 4; // Leather
+        amounts[0] = 5; // 2 extra iron
+        amounts[1] = 3; // 2 extra wood
+        amounts[2] = 1;
+        _giveResources(player, ids, amounts);
+        
+        vm.prank(player);
+        cs.craft(1);
+        
+        assertEq(res.balanceOf(player, 2), 2, "Excess iron should remain");
+        assertEq(res.balanceOf(player, 1), 2, "Excess wood should remain");
+        assertEq(res.balanceOf(player, 4), 0, "Exact leather should be used");
     }
 }
 
