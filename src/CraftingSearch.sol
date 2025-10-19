@@ -6,14 +6,9 @@ import {ResourceNFT1155} from "./ResourceNFT1155.sol";
 import {ItemNFT721} from "./ItemNFT721.sol";
 
 /**
- * @title CraftingSearch (Template)
- * @notice Minimal wiring only. No randomness, no recipes. You will implement logic.
- *
- * TODO:
- * - Implement `search()` with a 60s cooldown that mints 3 random resources via ResourceNFT1155.
- * - Define recipe storage and implement `craft()`:
- *   * burn resources in ResourceNFT1155
- *   * mint item in ItemNFT721
+ * @title CraftingSearch
+ * @notice Handles resource searching and item crafting mechanics
+ * @dev Players can search for random resources every 60 seconds and craft items from collected resources
  */
 contract CraftingSearch is AccessControl {
     ResourceNFT1155 public resources;
