@@ -1,10 +1,66 @@
-# ⚔️ Whitechain “Cossack Business” — Foundry Template
+# ⚔️ Whitechain "Cossack Business" — Foundry Template
 
 **Solidity 0.8.24** · **Foundry (forge)** · Minimal template (no metadata)  
 **Target:** Whitechain Testnet (deploy + later verify)
 
 This repo is a starter you can extend to complete the **WhiteBIT/NaUKMA assignment**.  
 It compiles, deploys, and includes a passing smoke test. You will implement the game logic incrementally.
+
+## Tests passed
+
+![alt text](images/tests.png)
+
+## 🚀 Deployed Contracts (Whitechain Testnet)
+
+- **ResourceNFT1155**: [`0xd14121fF841b4673634584723bb927379b543638`](https://testnet.whitechain.io/tx/0xed07123c01dd0cc003770cd283e2dae8f09d6bbe3fa0b2aa6b7b473abe951a94)
+- **ItemNFT721**: [`0x0F4dEa7D2eD46b31c1b0E02e212dff231528fE7D`](https://testnet.whitechain.io/tx/0x9ac723f042617393461ffea9b28f1b15cac99fa2cf4c056fc073ebab5e81aa72)
+- **MagicToken**: [`0xE0d4DB56Ce206300f1165821e020b02d1dF9bb1e`](https://testnet.whitechain.io/tx/0x95a1840601090e70dcdc50a73d4dadcf0510850639d4f019d868fca2a3bbcb78)
+- **CraftingSearch**: [`0xB85709Ba8961101647093441e2143EC8f9653052`](https://testnet.whitechain.io/tx/0xc245bc135b19e3031961bd48741b686c7497fc65c2ee3defef470ccad9c0e971)
+- **Marketplace**: [`0xCe77FB4Cb42bfB79aB4a07956628f1d807A7B03E`](https://testnet.whitechain.io/tx/0xd5b768bd4756043077f2ef5a894fdec83d48cae0ffe1f41334983844ab917f26)
+
+**Admin Address**: `0xf86f71De7D6c55EEF96596cdE6b331Db2C5e5515`  
+**Deployment Block**: `40306735`
+
+**Link**: https://testnet.whitechain.io/address/0xf86f71De7D6c55EEF96596cdE6b331Db2C5e5515
+
+![alt text](images/contracts_deployed.png)
+
+**Tested that contracts work**
+
+![alt text](images/transactions.png)
+
+**Purchase**
+
+![alt text](images/purchase.png)
+
+**NFT Transfers**
+
+![alt text](images/nft_transfers.png)
+
+**Summary**
+
+Here's what I successfully tested on Whitechain Testnet:
+
+### ✅ Complete Game Flow Verified:
+
+1. **Search** → Gathered resources (3× random resources per search with 60s cooldown)
+   - [Tx 0x7bd887...](https://testnet.whitechain.io/tx/0x7bd887d9a75b13f68468ca59cc6c212650b00e02e3df9087f19a90e073663386)
+
+2. **Craft** → Created Charakternyk Armor (burned 4 Leather + 2 Iron + 1 Gold)
+   - [Tx 0xc354a8...](https://testnet.whitechain.io/tx/0xc354a8bfa310ed84315aa1f1816f868b4bbd6d82fa7fbe28a3505c51a748a5eb)
+
+3. **List** → Listed item on marketplace for 100 MAGIC tokens
+   - [Tx 0x73d091...](https://testnet.whitechain.io/tx/0x73d09119d67466ad90c6b40b602222ce2a8ca6120397fe4f747a6dd4eb615c01)
+
+4. **Purchase** → Bought item (NFT burned, MAGIC minted to seller)
+   - [Tx 0xd4db48...](https://testnet.whitechain.io/tx/0xd4db48e3f55b965f22517c570624246ff3ac62d6191bf29b9bfaa952a2c2264c)
+
+### 📊 Final Stats:
+- **Resources Gathered**: 12 total across 4 successful searches
+- **Items Crafted**: 1 (Charakternyk Armor #1)
+- **Marketplace Sales**: 1 (100 MAGIC earned)
+- **Total Gas Spent**: ~0.32 WBT
+- **All Tests Passed**: 34/34
 
 ## 🔰 Assignment Summary
 
