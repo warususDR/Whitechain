@@ -350,5 +350,115 @@ contract TemplateTest is Test {
         assertEq(res.balanceOf(player, 1), 2, "Excess wood should remain");
         assertEq(res.balanceOf(player, 4), 0, "Exact leather should be used");
     }
+
+    // ========== ITEM BURN TESTS ==========
+
+    /// @notice Helper to craft an item for a player
+    function _craftItem(address player) internal returns (uint256 tokenId) {
+        uint256[] memory ids = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
+        ids[0] = 2; 
+        ids[1] = 1; 
+        ids[2] = 4; 
+        amounts[0] = 3;
+        amounts[1] = 1;
+        amounts[2] = 1;
+        _giveResources(player, ids, amounts);
+        
+        uint256 nextTokenId = items.nextId();
+        
+        vm.prank(player);
+        cs.craft(1);
+        
+        return nextTokenId;
+    }
+
+    /// @notice Test that BURNER_ROLE can burn an item
+    function test_burn_item_with_burner_role() public {
+        address player = address(0xBEEF);
+        address burner = address(0xBBBB);
+        
+        // Grant BURNER_ROLE to burner
+        bytes32 burnerRole = items.BURNER_ROLE();
+        vm.prank(admin);
+        items.grantRole(burnerRole, burner);
+        
+        // Craft an item for player
+        uint256 tokenId = _craftItem(player);
+        
+        // Verify player owns the item
+        assertEq(items.ownerOf(tokenId), player);
+        uint256 balanceBefore = items.balanceOf(player);
+        
+        // Burner burns the item
+        vm.prank(burner);
+        items.burn(tokenId);
+        
+        // Verify item is burned
+        assertEq(items.balanceOf(player), balanceBefore - 1);
+    }
+
+    /// @notice Test that non-BURNER_ROLE cannot burn
+    function test_burn_fails_without_burner_role() public {
+        address player = address(0xBEEF);
+        address notBurner = address(0xBAD);
+        
+        // Craft an item for player
+        uint256 tokenId = _craftItem(player);
+        
+        // Non-burner tries to burn (should fail)
+        vm.prank(notBurner);
+        vm.expectRevert();
+        items.burn(tokenId);
+        
+        // Item should still exist
+        assertEq(items.ownerOf(tokenId), player);
+    }
+
+    /// @notice Test that owner cannot burn their own item without BURNER_ROLE
+    function test_owner_cannot_burn_without_role() public {
+        address player = address(0xBEEF);
+        
+        // Craft an item for player
+        uint256 tokenId = _craftItem(player);
+        
+        // Owner tries to burn their own item (should fail - no BURNER_ROLE)
+        vm.prank(player);
+        vm.expectRevert();
+        items.burn(tokenId);
+        
+        // Item should still exist
+        assertEq(items.ownerOf(tokenId), player);
+    }
+
+    /// @notice Test burning multiple items
+    function test_burn_multiple_items() public {
+        address player = address(0xBEEF);
+        address burner = address(mkt); 
+        
+        bytes32 burnerRole = items.BURNER_ROLE();
+        vm.prank(admin);
+        items.grantRole(burnerRole, burner);
+        
+        uint256 tokenId1 = _craftItem(player);
+        uint256 tokenId2 = _craftItem(player);
+        uint256 tokenId3 = _craftItem(player);
+        
+        assertEq(items.balanceOf(player), 3);
+
+        vm.startPrank(burner);
+        items.burn(tokenId1);
+        items.burn(tokenId2);
+        vm.stopPrank();
+        
+        assertEq(items.balanceOf(player), 1);
+        assertEq(items.ownerOf(tokenId3), player);
+    }
+
+    /// @notice Test that BURNER_ROLE is properly configured
+    function test_burner_role_exists() public {
+        bytes32 burnerRole = items.BURNER_ROLE();
+        assertEq(burnerRole, keccak256("BURNER_ROLE"));
+    }
 }
 

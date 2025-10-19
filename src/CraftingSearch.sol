@@ -19,13 +19,11 @@ contract CraftingSearch is AccessControl {
     ResourceNFT1155 public resources;
     ItemNFT721 public items;
 
-    // Cooldown duration: 60 seconds between searches
     uint256 public constant SEARCH_COOLDOWN = 60;
     
-    // Track last search timestamp for each player
     mapping(address => uint256) public lastSearchTime;
 
-    // Resource IDs (matching ResourceNFT1155)
+    // Resource IDs
     uint256 public constant WOOD = 1;
     uint256 public constant IRON = 2;
     uint256 public constant GOLD = 3;
@@ -39,14 +37,12 @@ contract CraftingSearch is AccessControl {
     uint256 public constant CHARAKTERNYK_ARMOR = 3; // 4×Leather + 2×Iron + 1×Gold
     uint256 public constant BATTLE_BRACELET = 4;    // 4×Iron + 2×Gold + 2×Diamond
 
-    // Recipe structure
     struct Recipe {
         uint256[] resourceIds;
         uint256[] amounts;
         bool exists;
     }
 
-    // Store recipes for each item type
     mapping(uint256 => Recipe) public recipes;
 
     event SearchPerformed(address indexed player, uint256[] resourceIds, uint256[] amounts);
@@ -105,8 +101,6 @@ contract CraftingSearch is AccessControl {
     /// @notice Search for resources. Can be called once every 60 seconds per player.
     /// @dev Mints 3 random resources (IDs 1-6) to the caller via ResourceNFT1155.
     function search() external {
-        // Check cooldown: ensure 60 seconds have passed since last search
-        // Allow first search if lastSearchTime is 0 (never searched before)
         if (lastSearchTime[msg.sender] != 0) {
             require(
                 block.timestamp >= lastSearchTime[msg.sender] + SEARCH_COOLDOWN,
@@ -114,10 +108,8 @@ contract CraftingSearch is AccessControl {
             );
         }
         
-        // Update last search timestamp for this player
         lastSearchTime[msg.sender] = block.timestamp;
         
-        // Generate 3 random resource IDs (1-6 representing: Wood, Iron, Gold, Leather, Stone, Diamond)
         uint256[] memory resourceIds = new uint256[](3);
         uint256[] memory amounts = new uint256[](3);
         
@@ -129,11 +121,8 @@ contract CraftingSearch is AccessControl {
             msg.sender
         )));
         
-        // Generate 3 random resources
         for (uint256 i = 0; i < 3; i++) {
-            // Get random number between 1-6 (resource IDs)
             resourceIds[i] = (uint256(keccak256(abi.encodePacked(randomSeed, i))) % 6) + 1;
-            // Each search gives 1 of each resource
             amounts[i] = 1;
         }
         

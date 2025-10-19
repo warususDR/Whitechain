@@ -16,6 +16,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
  */
 contract ItemNFT721 is ERC721, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE"); // assign to CraftingSearch
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE"); // assign to Marketplace
     uint256 public nextId = 1;
 
     constructor(address admin) ERC721("Cossack Items", "CITEM") {
@@ -30,6 +31,12 @@ contract ItemNFT721 is ERC721, AccessControl {
         _safeMint(to, id);
         return id;
     }
+
+    /// @dev Burn an item. Only callable by addresses with BURNER_ROLE
+    function burn(uint256 tokenId) external onlyRole(BURNER_ROLE) {
+        _burn(tokenId);
+    }
+
     function supportsInterface(
         bytes4 interfaceId
     ) public view override(ERC721, AccessControl) returns (bool) {
