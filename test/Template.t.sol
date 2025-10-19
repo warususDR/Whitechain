@@ -31,6 +31,7 @@ contract TemplateTest is Test {
         res.grantRole(res.MINTER_ROLE(), address(cs));
         res.grantRole(res.BURNER_ROLE(), address(cs));
         items.grantRole(items.MINTER_ROLE(), address(cs));
+        items.grantRole(items.BURNER_ROLE(), address(mkt));
         magic.grantRole(magic.MARKET_ROLE(), address(mkt));
         vm.stopPrank();
     }
@@ -47,6 +48,7 @@ contract TemplateTest is Test {
         assertTrue(res.hasRole(res.MINTER_ROLE(), address(cs)));
         assertTrue(res.hasRole(res.BURNER_ROLE(), address(cs)));
         assertTrue(items.hasRole(items.MINTER_ROLE(), address(cs)));
+        assertTrue(items.hasRole(items.BURNER_ROLE(), address(mkt)));
         assertTrue(magic.hasRole(magic.MARKET_ROLE(), address(mkt)));
     }
 
@@ -261,9 +263,9 @@ contract TemplateTest is Test {
         
         uint256[] memory ids = new uint256[](3);
         uint256[] memory amounts = new uint256[](3);
-        ids[0] = 2; // Iron
-        ids[1] = 1; // Wood
-        ids[2] = 4; // Leather
+        ids[0] = 2; 
+        ids[1] = 1; 
+        ids[2] = 4; 
         amounts[0] = 2; // Only 2 instead of 3
         amounts[1] = 1;
         amounts[2] = 1;
@@ -289,9 +291,9 @@ contract TemplateTest is Test {
         
         uint256[] memory ids = new uint256[](3);
         uint256[] memory amounts = new uint256[](3);
-        ids[0] = 2; // Iron
-        ids[1] = 1; // Wood
-        ids[2] = 4; // Leather
+        ids[0] = 2; 
+        ids[1] = 1; 
+        ids[2] = 4; 
         amounts[0] = 6; // 3 × 2
         amounts[1] = 2; // 1 × 2
         amounts[2] = 2; // 1 × 2
@@ -313,9 +315,9 @@ contract TemplateTest is Test {
         
         uint256[] memory ids = new uint256[](3);
         uint256[] memory amounts = new uint256[](3);
-        ids[0] = 2; // Iron
-        ids[1] = 1; // Wood
-        ids[2] = 4; // Leather
+        ids[0] = 2; 
+        ids[1] = 1; 
+        ids[2] = 4; 
         amounts[0] = 3;
         amounts[1] = 1;
         amounts[2] = 1;
@@ -335,9 +337,9 @@ contract TemplateTest is Test {
         
         uint256[] memory ids = new uint256[](3);
         uint256[] memory amounts = new uint256[](3);
-        ids[0] = 2; // Iron
-        ids[1] = 1; // Wood
-        ids[2] = 4; // Leather
+        ids[0] = 2; 
+        ids[1] = 1; 
+        ids[2] = 4; 
         amounts[0] = 5; // 2 extra iron
         amounts[1] = 3; // 2 extra wood
         amounts[2] = 1;
@@ -378,23 +380,18 @@ contract TemplateTest is Test {
         address player = address(0xBEEF);
         address burner = address(0xBBBB);
         
-        // Grant BURNER_ROLE to burner
         bytes32 burnerRole = items.BURNER_ROLE();
         vm.prank(admin);
         items.grantRole(burnerRole, burner);
         
-        // Craft an item for player
         uint256 tokenId = _craftItem(player);
         
-        // Verify player owns the item
         assertEq(items.ownerOf(tokenId), player);
         uint256 balanceBefore = items.balanceOf(player);
         
-        // Burner burns the item
         vm.prank(burner);
         items.burn(tokenId);
-        
-        // Verify item is burned
+   
         assertEq(items.balanceOf(player), balanceBefore - 1);
     }
 
@@ -403,15 +400,12 @@ contract TemplateTest is Test {
         address player = address(0xBEEF);
         address notBurner = address(0xBAD);
         
-        // Craft an item for player
         uint256 tokenId = _craftItem(player);
         
-        // Non-burner tries to burn (should fail)
         vm.prank(notBurner);
         vm.expectRevert();
         items.burn(tokenId);
         
-        // Item should still exist
         assertEq(items.ownerOf(tokenId), player);
     }
 
@@ -419,15 +413,12 @@ contract TemplateTest is Test {
     function test_owner_cannot_burn_without_role() public {
         address player = address(0xBEEF);
         
-        // Craft an item for player
         uint256 tokenId = _craftItem(player);
         
-        // Owner tries to burn their own item (should fail - no BURNER_ROLE)
         vm.prank(player);
         vm.expectRevert();
         items.burn(tokenId);
         
-        // Item should still exist
         assertEq(items.ownerOf(tokenId), player);
     }
 
@@ -459,6 +450,220 @@ contract TemplateTest is Test {
     function test_burner_role_exists() public {
         bytes32 burnerRole = items.BURNER_ROLE();
         assertEq(burnerRole, keccak256("BURNER_ROLE"));
+    }
+
+    // ========== MARKETPLACE TESTS ==========
+
+    /// @notice Test listing an item for sale
+    function test_marketplace_list_item() public {
+        address seller = address(0xBEEF);
+        
+        uint256 tokenId = _craftItem(seller);
+        
+        uint256 price = 100 * 10**18;
+        vm.prank(seller);
+        mkt.list(tokenId, price);
+        
+        (address listedSeller, uint256 listedPrice, bool active) = mkt.listings(tokenId);
+        assertEq(listedSeller, seller);
+        assertEq(listedPrice, price);
+        assertTrue(active);
+    }
+
+    /// @notice Test that listing requires ownership
+    function test_marketplace_list_fails_if_not_owner() public {
+        address owner = address(0xBEEF);
+        address notOwner = address(0xBAD);
+        
+        uint256 tokenId = _craftItem(owner);
+        
+        vm.prank(notOwner);
+        vm.expectRevert("Not the owner of this item");
+        mkt.list(tokenId, 100);
+    }
+
+    /// @notice Test that listing requires price > 0
+    function test_marketplace_list_fails_with_zero_price() public {
+        address seller = address(0xBEEF);
+        
+        uint256 tokenId = _craftItem(seller);
+        
+        vm.prank(seller);
+        vm.expectRevert("Price must be greater than 0");
+        mkt.list(tokenId, 0);
+    }
+
+    /// @notice Test that cannot list already listed item
+    function test_marketplace_cannot_double_list() public {
+        address seller = address(0xBEEF);
+        
+        uint256 tokenId = _craftItem(seller);
+        
+        vm.prank(seller);
+        mkt.list(tokenId, 100);
+        
+        vm.prank(seller);
+        vm.expectRevert("Item already listed");
+        mkt.list(tokenId, 200);
+    }
+
+    /// @notice Test delisting an item
+    function test_marketplace_delist_item() public {
+        address seller = address(0xBEEF);
+        
+        uint256 tokenId = _craftItem(seller);
+      
+        vm.prank(seller);
+        mkt.list(tokenId, 100);
+        
+        vm.prank(seller);
+        mkt.delist(tokenId);
+   
+        (,, bool active) = mkt.listings(tokenId);
+        assertFalse(active);
+    }
+
+    /// @notice Test that only seller can delist
+    function test_marketplace_only_seller_can_delist() public {
+        address seller = address(0xBEEF);
+        address notSeller = address(0xBAD);
+        
+        uint256 tokenId = _craftItem(seller);
+        
+        vm.prank(seller);
+        mkt.list(tokenId, 100);
+        
+        vm.prank(notSeller);
+        vm.expectRevert("Not the seller");
+        mkt.delist(tokenId);
+    }
+
+    /// @notice Test that cannot delist unlisted item
+    function test_marketplace_cannot_delist_unlisted() public {
+        address seller = address(0xBEEF);
+        
+        uint256 tokenId = _craftItem(seller);
+        
+        vm.prank(seller);
+        vm.expectRevert("Item not listed");
+        mkt.delist(tokenId);
+    }
+
+    /// @notice Test purchasing an item
+    function test_marketplace_purchase_item() public {
+        address seller = address(0xBEEF);
+        address buyer = address(0xCAFE);
+        
+        uint256 tokenId = _craftItem(seller);
+        uint256 price = 100 * 10**18;
+        
+        vm.prank(seller);
+        mkt.list(tokenId, price);
+        
+        uint256 sellerBalanceBefore = magic.balanceOf(seller);
+        uint256 itemBalanceBefore = items.balanceOf(seller);
+        
+        vm.prank(buyer);
+        mkt.purchase(tokenId);
+        
+        assertEq(items.balanceOf(seller), itemBalanceBefore - 1);
+        
+        assertEq(magic.balanceOf(seller), sellerBalanceBefore + price);
+        
+        (,, bool active) = mkt.listings(tokenId);
+        assertFalse(active);
+    }
+
+    /// @notice Test that cannot purchase unlisted item
+    function test_marketplace_cannot_purchase_unlisted() public {
+        address buyer = address(0xCAFE);
+        
+        uint256 tokenId = _craftItem(address(0xBEEF));
+        
+        vm.prank(buyer);
+        vm.expectRevert("Item not listed");
+        mkt.purchase(tokenId);
+    }
+
+    /// @notice Test that cannot purchase after delisting
+    function test_marketplace_cannot_purchase_delisted() public {
+        address seller = address(0xBEEF);
+        address buyer = address(0xCAFE);
+        
+        uint256 tokenId = _craftItem(seller);
+        
+        vm.prank(seller);
+        mkt.list(tokenId, 100);
+        
+        vm.prank(seller);
+        mkt.delist(tokenId);
+        
+        vm.prank(buyer);
+        vm.expectRevert("Item not listed");
+        mkt.purchase(tokenId);
+    }
+
+    /// @notice Test event emissions for marketplace
+    function test_marketplace_emits_events() public {
+        address seller = address(0xBEEF);
+        address buyer = address(0xCAFE);
+        
+        uint256 tokenId = _craftItem(seller);
+        uint256 price = 100 * 10**18;
+        
+        vm.prank(seller);
+        vm.recordLogs();
+        mkt.list(tokenId, price);
+        Vm.Log[] memory logsListed = vm.getRecordedLogs();
+        assertTrue(logsListed.length > 0, "ItemListed event should be emitted");
+        
+        vm.prank(buyer);
+        vm.recordLogs();
+        mkt.purchase(tokenId);
+        Vm.Log[] memory logsPurchased = vm.getRecordedLogs();
+        assertTrue(logsPurchased.length > 0, "ItemPurchased event should be emitted");
+    }
+
+    /// @notice Test that seller can relist after delisting
+    function test_marketplace_can_relist_after_delist() public {
+        address seller = address(0xBEEF);
+        
+        uint256 tokenId = _craftItem(seller);
+        
+        vm.startPrank(seller);
+        mkt.list(tokenId, 100);
+        mkt.delist(tokenId);
+        mkt.list(tokenId, 200); 
+        vm.stopPrank();
+        
+        (address listedSeller, uint256 listedPrice, bool active) = mkt.listings(tokenId);
+        assertEq(listedSeller, seller);
+        assertEq(listedPrice, 200);
+        assertTrue(active);
+    }
+
+    /// @notice Test multiple listings and purchases
+    function test_marketplace_multiple_items() public {
+        address seller1 = address(0xBEEF);
+        address seller2 = address(0xCAFE);
+        address buyer = address(0xDEAD);
+        
+        uint256 tokenId1 = _craftItem(seller1);
+        uint256 tokenId2 = _craftItem(seller2);
+        
+        vm.prank(seller1);
+        mkt.list(tokenId1, 100 * 10**18);
+        
+        vm.prank(seller2);
+        mkt.list(tokenId2, 200 * 10**18);
+        
+        vm.startPrank(buyer);
+        mkt.purchase(tokenId1);
+        mkt.purchase(tokenId2);
+        vm.stopPrank();
+        
+        assertEq(magic.balanceOf(seller1), 100 * 10**18);
+        assertEq(magic.balanceOf(seller2), 200 * 10**18);
     }
 }
 

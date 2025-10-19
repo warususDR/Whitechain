@@ -31,6 +31,7 @@ contract Deploy is Script {
         res.grantRole(res.BURNER_ROLE(), address(cs));
 
         items.grantRole(items.MINTER_ROLE(), address(cs));
+        items.grantRole(items.BURNER_ROLE(), address(mkt));
 
         magic.grantRole(magic.MARKET_ROLE(), address(mkt));
 
